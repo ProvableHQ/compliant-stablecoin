@@ -34,10 +34,10 @@ program stablecoin_bridge.aleo {
         amount: u128,
     }
 
-    const ETH_PUBLIC_KEY: [u8; 20] = [27, 227, 26, 148, 54, 26, 57, 27, 186, 251, 42, 76, 205, 112, 79, 87, 220, 4, 212, 187];
+    const ETH_PUBLIC_KEY: [u8; 20] = [106, 105, 181, 221, 121, 253, 161, 10, 65, 94, 131, 172, 7, 63, 62, 121, 240, 79, 59, 174];
     const MAGIC_VALUE: [u8; 4] = [90, 46, 10, 205]; // 0x5a2e0acd
     const SUPPORTED_VERSION: [u8; 4] = [0, 0, 0, 1];
-    const DOMAIN: [u8;4] = [0, 0, 27, 12]; // 10002
+    const DOMAIN: [u8; 4] = [0, 0, 39, 18]; // 10002
     const REMOTE_TOKEN_CONTRACT_ADDRESS: [u8; 32] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 59, 101, 194, 39, 134, 99, 51, 57, 180, 90, 123, 196, 141, 79, 79, 243, 146, 78, 239, 104] // 0x3B65C22786633339b45a7bc48D4F4ff3924EEf68
 ;
     const MINIMUM_BURN_AMOUNT: u128 = 1000000u128;
