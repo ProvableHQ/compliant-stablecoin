@@ -1,0 +1,28 @@
+{
+  "program": "stablecoin_bridge.aleo",
+  "version": "0.1.0",
+  "description": "",
+  "license": "MIT",
+  "leo": "3.4.0",
+  "dependencies": [
+    {
+      "name": "stablecoin_program.aleo",
+      "location": "local",
+      "path": "../stablecoin_program",
+      "edition": null
+    },
+    {
+      "name": "freezelist_program.aleo",
+      "location": "local",
+      "path": "../freezelist_program",
+      "edition": null
+    },
+    {
+      "name": "multisig_core.aleo",
+      "location": "local",
+      "path": "../multisig_core",
+      "edition": null
+    }
+  ],
+  "dev_dependencies": null
+}
