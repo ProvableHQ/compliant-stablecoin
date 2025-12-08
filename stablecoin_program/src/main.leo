@@ -71,7 +71,7 @@ program stablecoin_program.aleo {
     const MANAGER_ROLE: u16 = 8u16; // can only assign roles
     mapping address_to_role: address => u16;
 
-    // Only this address can deploy the program
+    // Only this address can deploy and initialize the program
     const DEPLOYER_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
 
     // This address receives compliance records (can be updated with the contract upgrade)
@@ -103,6 +103,10 @@ program stablecoin_program.aleo {
         let current_role: u16 = address_to_role.get(caller);
         assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
         
+        if (caller == new_address) { 
+            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
+        }
+
         address_to_role.set(new_address, new_role);
 
     }
@@ -277,7 +281,7 @@ program stablecoin_program.aleo {
     }
 
     // Burns public tokens from the specified owner’s balance.
-    // Can be called by the admin, a burner, or a supply manager.
+    // Can be called only by a burner.
     // Decreases the owner’s balance and reduces the total token supply in the token metadata.
     async transition burn_public(
         public owner: address,
@@ -849,6 +853,8 @@ program stablecoin_program.aleo {
 
         // Ensure the roots from the merkle proofs are the same
         assert_eq(root1, root2);
+        // Ensure the depth of the merkle proofs is the same
+        assert_eq(depth1, depth2);
         
         let addr_field: field = addr as field;
         if (merkle_proofs[0u32].leaf_index == merkle_proofs[1u32].leaf_index) {
