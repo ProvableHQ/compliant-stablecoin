@@ -188,7 +188,7 @@ program stablecoin_program.aleo {
     }
 
     // Mints new public tokens to the specified recipient’s balance.
-    // Can be called by the admin, a minter, or a supply manager.
+    // Can only be called by a minter.
     // Ensures that the new total supply does not exceed the maximum supply.
     // Updates the recipient’s balance and the total token supply in the token metadata.
     async transition mint_public(
@@ -231,7 +231,7 @@ program stablecoin_program.aleo {
     }
 
     // Mints new private tokens to the specified recipient.
-    // Can be called by the admin, a minter, or a supply manager.
+    // Can only be called by a minter.
     // Ensures that the new total supply does not exceed the maximum supply.
     // Updates the total token supply in the token metadata.
     async transition mint_private(
@@ -281,7 +281,7 @@ program stablecoin_program.aleo {
     }
 
     // Burns public tokens from the specified owner’s balance.
-    // Can be called only by a burner.
+    // Can only be called by a burner.
     // Decreases the owner’s balance and reduces the total token supply in the token metadata.
     async transition burn_public(
         public owner: address,
@@ -319,7 +319,7 @@ program stablecoin_program.aleo {
     }
 
     // Burns tokens from a private record (non-public asset).
-    // Can be called by the admin, a burner, or a supply manager.
+    // Can only be called by a burner.
     // Reduces the amount in the provided private record and decreases the total token supply in the token metadata.
     async transition burn_private(
         input_record: Token,
