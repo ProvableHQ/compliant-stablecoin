@@ -2,7 +2,7 @@
   "program": "stablecoin_program.aleo",
   "version": "0.1.0",
   "description": "",
-  "license": "MIT",
+  "license": "GPL",
   "leo": "3.4.0",
   "dependencies": [
     {

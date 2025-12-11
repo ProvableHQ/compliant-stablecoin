@@ -1,5 +1,5 @@
 {
-  "program": "usdcx_stablecoin.aleo",
+  "program": "stablecoin_program.aleo",
   "version": "0.1.0",
   "description": "",
   "license": "",

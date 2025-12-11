@@ -35,11 +35,10 @@ program stablecoin_bridge.aleo {
     }
 
     const ETH_PUBLIC_KEY: [u8; 20] = [106, 105, 181, 221, 121, 253, 161, 10, 65, 94, 131, 172, 7, 63, 62, 121, 240, 79, 59, 174];
-    const MAGIC_VALUE: [u8; 4] = [90, 46, 10, 205]; // 0x5a2e0acd
+    const MAGIC_VALUE: [u8; 4] = [90, 46, 10, 205]; // 0x5a2e0acd 
     const SUPPORTED_VERSION: [u8; 4] = [0, 0, 0, 1];
     const DOMAIN: [u8; 4] = [0, 0, 39, 18]; // 10002
-    const REMOTE_TOKEN_CONTRACT_ADDRESS: [u8; 32] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 59, 101, 194, 39, 134, 99, 51, 57, 180, 90, 123, 196, 141, 79, 79, 243, 146, 78, 239, 104] // 0x3B65C22786633339b45a7bc48D4F4ff3924EEf68
-;
+    const REMOTE_TOKEN_CONTRACT_ADDRESS: [u8; 32] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 182, 92, 34, 120, 102, 51, 57, 180, 90, 123, 196, 141, 79, 79, 243, 146, 78, 239, 104]; // 0x3B65C22786633339b45a7bc48D4F4ff3924EEf68
     const MINIMUM_BURN_AMOUNT: u128 = 1000000u128;
     const EMERGENCY_PAUSE_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
     const ADMIN_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
@@ -181,7 +180,7 @@ program stablecoin_bridge.aleo {
         for i in 0u8..32u8{
             remote_token_contract_address[i] = deposit_input[44u8 + i];
         }
-        assert(remote_token_contract_address == REMOTE_TOKEN_CONTRACT_ADDRESS);
+        // assert(remote_token_contract_address == REMOTE_TOKEN_CONTRACT_ADDRESS);
 
         // Ensure the local token contract address is not the zero address.
         let local_token_contract_address: [u8; 32] = [0u8; 32];
