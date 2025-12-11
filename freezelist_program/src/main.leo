@@ -79,8 +79,11 @@ program freezelist_program.aleo {
         let current_role: u16 = address_to_role.get(caller);
         assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
         
-        address_to_role.set(new_address, new_role);
+        if (caller == new_address) { 
+            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
+        }
 
+        address_to_role.set(new_address, new_role);
     }
 
     // Updates the number of blocks during which the previous root is still considered valid.
