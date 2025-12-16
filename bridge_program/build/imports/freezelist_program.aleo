@@ -86,6 +86,14 @@ finalize update_role:
     and r3 8u16 into r4;
     is.eq r4 8u16 into r5;
     assert.eq r5 true;
+    is.eq r1 r0 into r6;
+    branch.eq r6 false to end_then_0_0;
+    and r2 8u16 into r7;
+    is.eq r7 8u16 into r8;
+    assert.eq r8 true;
+    branch.eq true true to end_otherwise_0_1;
+    position end_then_0_0;
+    position end_otherwise_0_1;
     set r2 into address_to_role[r0];
 
 function update_block_height_window:
@@ -130,24 +138,24 @@ finalize update_freeze_list:
     assert.neq r1 r10;
     set r1 into freeze_list[r0];
     get.or_use freeze_list_index[r2] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc into r11;
-    branch.eq r1 false to end_then_0_0;
+    branch.eq r1 false to end_then_0_2;
     assert.eq r11 aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
     get freeze_list_last_index[true] into r12;
     add r12 1u32 into r13;
     gte r13 r2 into r14;
     assert.eq r14 true;
     lt r12 r2 into r15;
-    branch.eq r15 false to end_then_1_2;
+    branch.eq r15 false to end_then_1_4;
     set r2 into freeze_list_last_index[true];
-    branch.eq true true to end_otherwise_1_3;
-    position end_then_1_2;
-    position end_otherwise_1_3;
+    branch.eq true true to end_otherwise_1_5;
+    position end_then_1_4;
+    position end_otherwise_1_5;
     set r0 into freeze_list_index[r2];
-    branch.eq true true to end_otherwise_0_1;
-    position end_then_0_0;
+    branch.eq true true to end_otherwise_0_3;
+    position end_then_0_2;
     assert.eq r11 r0;
     set aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc into freeze_list_index[r2];
-    position end_otherwise_0_1;
+    position end_otherwise_0_3;
     set block.height into root_updated_height[true];
 
 function verify_non_inclusion_pub:
@@ -171,7 +179,7 @@ finalize verify_non_inclusion_priv:
     input r0 as field.public;
     get freeze_list_root[1u8] into r1;
     is.neq r1 r0 into r2;
-    branch.eq r2 false to end_then_0_4;
+    branch.eq r2 false to end_then_0_6;
     get freeze_list_root[2u8] into r3;
     assert.eq r0 r3;
     get block_height_window[true] into r4;
@@ -179,20 +187,20 @@ finalize verify_non_inclusion_priv:
     add r5 r4 into r6;
     gt r6 block.height into r7;
     assert.eq r7 true;
-    branch.eq true true to end_otherwise_0_5;
-    position end_then_0_4;
-    position end_otherwise_0_5;
+    branch.eq true true to end_otherwise_0_7;
+    position end_then_0_6;
+    position end_otherwise_0_7;
 
 constructor:
     gt edition 0u16 into r0;
-    branch.eq r0 false to end_then_0_6;
+    branch.eq r0 false to end_then_0_8;
     cast checksum edition into r1 as ChecksumEdition;
     hash.bhp256 r1 into r2 as field;
     cast freezelist_program.aleo r2 into r3 as WalletSigningOpId;
     hash.bhp256 r3 into r4 as field;
     contains multisig_core.aleo/completed_signing_ops[r4] into r5;
     assert.eq r5 true;
-    branch.eq true true to end_otherwise_0_7;
-    position end_then_0_6;
-    position end_otherwise_0_7;
+    branch.eq true true to end_otherwise_0_9;
+    position end_then_0_8;
+    position end_otherwise_0_9;
 
