@@ -188,8 +188,30 @@ program stablecoin_bridge.aleo {
         return (amount, recipient_address, deposit_hash, nonce);
     }
 
-    // Burn transactions will be fully public.  The native domain and native recipient fields are required for Circle compliance.
+    // This function will no longer be used, so we force a failure with a false assertion.
     async transition burn(public amount: u128, public native_domain: u32, public native_recipient: [u8; 32]) -> Future {
+        // This assert will always fail.
+        assert_neq(self.caller, self.caller);
+        let sender = self.caller;
+        // This will make an external call to the burn_public transition in the bridged_usdc.aleo program.
+        // Only the bridge program will be able to call this method on the bridged_usdc.aleo program.
+        let burn_future: Future = stablecoin_program.aleo/burn_public(sender, amount);
+        return async {
+            // Check that the USDCX_PAUSE_KEY has not paused the bridge.
+            let is_paused: bool = paused.get_or_use(true, false);
+            assert_eq(is_paused, false);
+
+            // Check that the address is not on the freeze list.
+            let is_sender_frozen: bool = freezelist_program.aleo/freeze_list.get_or_use(sender, false);
+            assert_eq(is_sender_frozen, false);
+            burn_future.await();
+        };
+    }
+
+    // Burn transactions will be fully public.  The native domain and native recipient fields are required for Circle compliance.
+    async transition burn_public(public amount: u128, public native_domain: u32, public native_recipient: [u8; 32]) -> Future {
+        // This assertion will cause the function to always fail.
+        assert_neq(self.caller, self.caller);
         let sender = self.caller;
         // This will make an external call to the burn_public transition in the bridged_usdc.aleo program.
         // Only the bridge program will be able to call this method on the bridged_usdc.aleo program.
