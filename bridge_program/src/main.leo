@@ -41,10 +41,10 @@ program stablecoin_bridge.aleo {
         edition: u16,
     }
 
+    mapping circle_attester: bool => [u8; 20];
+    mapping minimum_burn_amount: bool => u128;
     mapping nullifier: [u8; 32] => bool;
     mapping paused: bool => bool;
-    mapping minimum_burn_amount: bool => u128;
-    mapping circle_attester: bool => [u8; 20];
 
     // This method extracts the recipient address, amount, and nonce field from the payload and verifies the ECDSA signature.
     // A freeze list check is also performed before minting private tokens to the recipient address.
