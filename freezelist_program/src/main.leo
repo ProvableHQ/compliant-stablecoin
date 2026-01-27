@@ -35,6 +35,13 @@ program freezelist_program.aleo {
         checksum: [u8; 32],
         edition: u16,
     }
+
+    // A helper for calculating a signing_op_id from the program's checksum and edition.
+    // By deriving the signing_op_id from both we ensure that downgrades cannot take place.
+    transition get_signing_op_id_for_deploy(checksum: [u8; 32], edition: u16) -> field {
+        return BHP256::hash_to_field(ChecksumEdition { checksum: checksum, edition: edition });
+    }
+
     // Indicates whether an address is frozen.
     mapping freeze_list: address => bool;
     // Mimics an array of frozen addresses by storing them at sequential indexes.
@@ -79,10 +86,6 @@ program freezelist_program.aleo {
         let current_role: u16 = address_to_role.get(caller);
         assert(current_role & MANAGER_ROLE == MANAGER_ROLE);
 
-        if (caller == new_address) { 
-            assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
-        }
-        
         if (caller == new_address) { 
             assert(new_role & MANAGER_ROLE == MANAGER_ROLE); 
         }
