@@ -2,19 +2,8 @@ import freezelist_program.aleo;
 import multisig_core.aleo;
 import stablecoin_program.aleo;
 
-// The 'circle_bridge' program.
+// The USDCx bridge program.
 program stablecoin_bridge.aleo {
-    // A helper for calculating a signing_op_id from the program's checksum and edition.
-    // By deriving the signing_op_id from both we ensure that downgrades cannot take place.
-    transition get_signing_op_id_for_deploy(checksum: [u8; 32], edition: u16) -> field {
-        return BHP256::hash_to_field(ChecksumEdition { checksum: checksum, edition: edition });
-    }
-
-    struct ChecksumEdition {
-        checksum: [u8; 32],
-        edition: u16,
-    }
-    
     @custom
     async constructor() {
         // Only require multisig for upgrades - initial deployment has no checks.
@@ -27,22 +16,13 @@ program stablecoin_bridge.aleo {
         }
     }
 
-    mapping nullifier: [u8; 32] => bool;
-
-    record BridgedUsdc {
-        owner: address,
-        amount: u128,
-    }
-
-    const ETH_PUBLIC_KEY: [u8; 20] = [106, 105, 181, 221, 121, 253, 161, 10, 65, 94, 131, 172, 7, 63, 62, 121, 240, 79, 59, 174];
+    const USDCX_PAUSE_KEY: address = aleo16s9af9darj0j5k7fpaxjq0u9fepd6sc4svrkr9vs4d3wlmp5lqyq4h3fpl;
+    const USDCX_MANAGER_KEY: address = aleo13zt4uq0u09sffnf4ctgu47k5n30txjx2w9cwcqgneapjeqsywsqqu6hspt;
+    const ETH_PUBLIC_KEY: [u8; 20] = [252, 83, 188, 10, 12, 182, 237, 57, 194, 0, 45, 226, 77, 10, 169, 81, 124, 122, 66, 198]; // 0xfc53bc0a0cb6ed39c2002de24d0aa9517c7a42c6
     const MAGIC_VALUE: [u8; 4] = [90, 46, 10, 205]; // 0x5a2e0acd 
     const SUPPORTED_VERSION: [u8; 4] = [0, 0, 0, 1];
     const DOMAIN: [u8; 4] = [0, 0, 39, 18]; // 10002
-    const REMOTE_TOKEN_CONTRACT_ADDRESS: [u8; 32] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 182, 92, 34, 120, 102, 51, 57, 180, 90, 123, 196, 141, 79, 79, 243, 146, 78, 239, 104]; // 0x3B65C22786633339b45a7bc48D4F4ff3924EEf68
-    const MINIMUM_BURN_AMOUNT: u128 = 1000000u128;
-    const EMERGENCY_PAUSE_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
-    const ADMIN_ADDRESS: address = aleo1rhgdu77hgyqd3xjj8ucu3jj9r2krwz6mnzyd80gncr5fxcwlh5rsvzp9px;
-    
+    const MINIMUM_BURN_AMOUNT: u128 = 5000000u128;
     // These constants are used to interact with the Circle freeze list program.
     const MAX_TREE_DEPTH: u32 = 15u32;
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
@@ -50,10 +30,21 @@ program stablecoin_bridge.aleo {
     const BLOCK_HEIGHT_WINDOW_INDEX: bool = true;
     const ROOT_UPDATED_HEIGHT_INDEX: bool = true;
 
-    mapping paused: bool => bool;
-    mapping emergency_paused: bool => bool;
+    // A helper for calculating a signing_op_id from the program's checksum and edition.
+    // By deriving the signing_op_id from both we ensure that downgrades cannot take place.
+    transition get_signing_op_id_for_deploy(checksum: [u8; 32], edition: u16) -> field {
+        return BHP256::hash_to_field(ChecksumEdition { checksum: checksum, edition: edition });
+    }
+
+    struct ChecksumEdition {
+        checksum: [u8; 32],
+        edition: u16,
+    }
 
     mapping circle_attester: bool => [u8; 20];
+    mapping minimum_burn_amount: bool => u128;
+    mapping nullifier: [u8; 32] => bool;
+    mapping paused: bool => bool;
 
     // This method extracts the recipient address, amount, and nonce field from the payload and verifies the ECDSA signature.
     // A freeze list check is also performed before minting private tokens to the recipient address.
@@ -89,10 +80,6 @@ program stablecoin_bridge.aleo {
             let updated_height: u32 = freezelist_program.aleo/root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
-
-        // Check that the emergency pause address has not paused the bridge.
-        let is_emergency_paused: bool = emergency_paused.get_or_use(true, false);
-        assert_eq(is_emergency_paused, false);
         
         // Check that the Circle attester is set.  If not, use the default ETH public key.
         let circle_attester_key: [u8; 20] = circle_attester.get_or_use(true, ETH_PUBLIC_KEY);
@@ -127,10 +114,6 @@ program stablecoin_bridge.aleo {
         // Check that the Admin has not paused the bridge.
         let is_paused: bool = paused.get_or_use(true, false);
         assert_eq(is_paused, false);
-
-        // Check that the emergency pause address has not paused the bridge.
-        let is_emergency_paused: bool = emergency_paused.get_or_use(true, false);
-        assert_eq(is_emergency_paused, false);
 
         // Check that the recipient is not frozen in the Circle freeze list.
         let is_recipient_frozen: bool = freezelist_program.aleo/freeze_list.get_or_use(recipient_address, false);
@@ -175,13 +158,6 @@ program stablecoin_bridge.aleo {
         let domain: [u8; 4] = [deposit_input[40], deposit_input[41], deposit_input[42], deposit_input[43]];
         assert(domain == DOMAIN);
 
-        // Ensure the remote token contract address is correct.
-        let remote_token_contract_address: [u8; 32] = [0u8; 32];
-        for i in 0u8..32u8{
-            remote_token_contract_address[i] = deposit_input[44u8 + i];
-        }
-        // assert(remote_token_contract_address == REMOTE_TOKEN_CONTRACT_ADDRESS);
-
         // Ensure the local token contract address is not the zero address.
         let local_token_contract_address: [u8; 32] = [0u8; 32];
         for i in 0u8..32u8{
@@ -212,21 +188,40 @@ program stablecoin_bridge.aleo {
         return (amount, recipient_address, deposit_hash, nonce);
     }
 
-    // Burn transactions will be fully public.  The native domain and native recipient fields are required for Circle compliance.
+    // This function will no longer be used, so we force a failure with a false assertion.
     async transition burn(public amount: u128, public native_domain: u32, public native_recipient: [u8; 32]) -> Future {
+        // This assert will always fail.
+        assert_neq(self.caller, self.caller);
         let sender = self.caller;
-        // Circle will inform us of what this amount should be prior to deployment.
-        assert(amount > MINIMUM_BURN_AMOUNT);
         // This will make an external call to the burn_public transition in the bridged_usdc.aleo program.
         // Only the bridge program will be able to call this method on the bridged_usdc.aleo program.
         let burn_future: Future = stablecoin_program.aleo/burn_public(sender, amount);
         return async {
-            // Check that the Admin has not paused the bridge.
+            // Check that the USDCX_PAUSE_KEY has not paused the bridge.
             let is_paused: bool = paused.get_or_use(true, false);
             assert_eq(is_paused, false);
-            // Check that the emergency pause address has not paused the bridge.
-            let is_emergency_paused: bool = emergency_paused.get_or_use(true, false);
-            assert_eq(is_emergency_paused, false);
+
+            // Check that the address is not on the freeze list.
+            let is_sender_frozen: bool = freezelist_program.aleo/freeze_list.get_or_use(sender, false);
+            assert_eq(is_sender_frozen, false);
+            burn_future.await();
+        };
+    }
+
+    // Burn transactions will be fully public.  The native domain and native recipient fields are required for Circle compliance.
+    async transition burn_public(public amount: u128, public native_domain: u32, public native_recipient: [u8; 32]) -> Future {
+        let sender = self.caller;
+        // This will make an external call to the burn_public transition in the bridged_usdc.aleo program.
+        // Only the bridge program will be able to call this method on the bridged_usdc.aleo program.
+        let burn_future: Future = stablecoin_program.aleo/burn_public(sender, amount);
+        return async {
+            // Check that the USDCX_PAUSE_KEY has not paused the bridge.
+            let is_paused: bool = paused.get_or_use(true, false);
+            assert_eq(is_paused, false);
+
+            // Check that the amount is above the minimum burn amount.
+            let burn_threshold: u128 = minimum_burn_amount.get_or_use(true, MINIMUM_BURN_AMOUNT);
+             assert(amount >= burn_threshold);
 
             // Check that the address is not on the freeze list.
             let is_sender_frozen: bool = freezelist_program.aleo/freeze_list.get_or_use(sender, false);
@@ -236,23 +231,23 @@ program stablecoin_bridge.aleo {
     }
 
     async transition set_pause_status(new_status: bool) -> Future {
-        assert_eq(self.caller, ADMIN_ADDRESS);
+        assert_eq(self.caller, USDCX_PAUSE_KEY);
         return async {
             paused.set(true, new_status);
         };
     }
 
-    async transition set_emergency_pause_status(new_status: bool) -> Future {
-        assert_eq(self.caller, EMERGENCY_PAUSE_ADDRESS);
+    async transition set_circle_attester(new_attester: [u8; 20]) -> Future {
+        assert_eq(self.caller, USDCX_MANAGER_KEY);
         return async {
-            emergency_paused.set(true, new_status);
+            circle_attester.set(true, new_attester);
         };
     }
 
-    async transition set_circle_attester(new_attester: [u8; 20]) -> Future {
-        assert_eq(self.caller, ADMIN_ADDRESS);
+    async transition set_minimum_burn_amount(new_minimum: u128) -> Future {
+        assert_eq(self.caller, USDCX_MANAGER_KEY);
         return async {
-            circle_attester.set(true, new_attester);
+            minimum_burn_amount.set(true, new_minimum);
         };
     }
 
@@ -321,6 +316,8 @@ program stablecoin_bridge.aleo {
 
         // Ensure the roots from the merkle proofs are the same.
         assert_eq(root1, root2);
+        // Ensure the depth of the merkle proofs is the same
+        assert_eq(depth1, depth2);
         
         let addr_field: field = addr as field;
         if (merkle_proofs[0u32].leaf_index == merkle_proofs[1u32].leaf_index) {
