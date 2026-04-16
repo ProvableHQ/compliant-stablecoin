@@ -413,6 +413,9 @@ program stablecoin_bridge.aleo {
         for i in 0u8..253u8 {
             sliced_bits[i] = address_bits[i];
         }
+        for i in 0u8..3u8 {
+            assert_eq(address_bits[253u8 + i], false);
+        }
         let recipient_address: address = Deserialize::from_bits_raw::[address](sliced_bits);
         return recipient_address;
     }
