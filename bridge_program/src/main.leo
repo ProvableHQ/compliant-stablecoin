@@ -18,11 +18,14 @@ program stablecoin_bridge.aleo {
 
     const USDCX_PAUSE_KEY: address = aleo16s9af9darj0j5k7fpaxjq0u9fepd6sc4svrkr9vs4d3wlmp5lqyq4h3fpl;
     const USDCX_MANAGER_KEY: address = aleo13zt4uq0u09sffnf4ctgu47k5n30txjx2w9cwcqgneapjeqsywsqqu6hspt;
+    const PRIVATE_MINT_WRAPPER_ADDRESS: address = usdcx_private_mint.aleo;
     const ETH_PUBLIC_KEY: [u8; 20] = [252, 83, 188, 10, 12, 182, 237, 57, 194, 0, 45, 226, 77, 10, 169, 81, 124, 122, 66, 198]; // 0xfc53bc0a0cb6ed39c2002de24d0aa9517c7a42c6
+    const ARC_PUBLIC_KEY: [u8; 20] = [152, 17, 74, 154, 55, 157, 106, 190, 118, 131, 221, 148, 116, 192, 136, 32, 81, 93, 17, 186]; // 0x98114a9a379d6abe7683dd94874c08820515d11ba
     const MAGIC_VALUE: [u8; 4] = [90, 46, 10, 205]; // 0x5a2e0acd 
     const SUPPORTED_VERSION: [u8; 4] = [0, 0, 0, 1];
     const DOMAIN: [u8; 4] = [0, 0, 39, 18]; // 10002
     const MINIMUM_BURN_AMOUNT: u128 = 5000000u128;
+    const MAXIMUM_BURN_AMOUNT: u128 = 5000000000000u128; // 5 million USDC limit set by Circle.
     // These constants are used to interact with the Circle freeze list program.
     const MAX_TREE_DEPTH: u32 = 15u32;
     const CURRENT_FREEZE_LIST_ROOT_INDEX: u8 = 1u8;
@@ -45,6 +48,7 @@ program stablecoin_bridge.aleo {
     mapping minimum_burn_amount: bool => u128;
     mapping nullifier: [u8; 32] => bool;
     mapping paused: bool => bool;
+    mapping circle_attesters: [u8; 32] => [u8; 20]; // Mapping of localToken address to corresponding public attester key.
 
     // This method extracts the recipient address, amount, and nonce field from the payload and verifies the ECDSA signature.
     // A freeze list check is also performed before minting private tokens to the recipient address.
@@ -108,6 +112,42 @@ program stablecoin_bridge.aleo {
         let verify_future: Future = finalize_verify_ecdsa_public(sig, deposit_hash, nonce, recipient_address, mint_public_future);
 
         return verify_future;
+    }
+
+    // This method extracts the recipient address, amount, and nonce field from the payload and verifies the ECDSA signature.
+    // A public freeze list check is also performed before minting public tokens to the recipient address.
+    async transition mint_public_v2(deposit_input: [u8; 272], sig: [u8; 65], digest: [u8; 32]) -> (Future) {
+        // Check the invariant conditions before proceeding with the mint.
+        let (amount, recipient_address, deposit_hash, nonce, local_token) = check_mint_invariants_v2(deposit_input, digest);
+
+        // Call the mint public function from the Bridged USDC program.
+        let mint_public_future: Future = stablecoin_program.aleo/mint_public(recipient_address, amount);
+        
+        // Perform the signature verification, freeze list check, and nullifier check.
+        return async {
+            // Check that the Admin has not paused the bridge.
+            let is_paused: bool = paused.get_or_use(true, false);
+            assert_eq(is_paused, false);
+
+            // Check that the recipient is not frozen in the Circle freeze list.
+            let is_recipient_frozen: bool = freezelist_program.aleo/freeze_list.get_or_use(recipient_address, false);
+            assert_eq(is_recipient_frozen, false);
+
+            // Fetch the correct attester key based on the local token address in the deposit input.
+            let circle_attester_key: [u8; 20] = circle_attesters.get(local_token);
+
+            // Verify the ECDSA signature using the provided message and public key.
+            let is_valid: bool = ECDSA::verify_digest_eth(sig, circle_attester_key, deposit_hash);
+            assert(is_valid);
+
+            // Verify that the nullifier has not been used.
+            let contains_bool: bool = nullifier.contains(nonce);
+            assert(contains_bool == false);
+            nullifier.set(nonce, true);
+
+            // Await the mint public future to complete the minting process.
+            mint_public_future.await();
+        };
     }
 
     async function finalize_verify_ecdsa_public(sig: [u8; 65], deposit_hash: [u8; 32], nonce: [u8; 32], recipient_address: address, mint_public_future: Future) {
@@ -188,6 +228,69 @@ program stablecoin_bridge.aleo {
         return (amount, recipient_address, deposit_hash, nonce);
     }
 
+    // Check the invariant conditions before allowing either a mint private or mint public transaction.
+    inline check_mint_invariants_v2(deposit_input: [u8; 272], digest: [u8; 32]) -> (u128, address, [u8;32], [u8; 32], [u8; 32]) {
+        // Additional invariant checks can be added here if needed in the future.
+        // Ensure the deposit input starts with the expected magic value.
+        let magic_value: [u8; 4] = [deposit_input[0], deposit_input[1], deposit_input[2], deposit_input[3]];
+        assert(magic_value == MAGIC_VALUE);
+
+        // // Ensure the deposit input is of the supported version.
+        let version: [u8; 4] = [deposit_input[4], deposit_input[5], deposit_input[6], deposit_input[7]];
+        assert(version == SUPPORTED_VERSION);
+
+        // Extract the amount from the deposit input bytes.
+        let amount_bytes: [u8; 16] = [0u8; 16];
+        for i in 0u8..16u8{
+            amount_bytes[i] = deposit_input[24u8 + i];
+        }
+        let amount: u128 = convert_bytes_to_u128(amount_bytes);
+        assert(amount > 0u128);
+
+        // Ensure the domain is correct.
+        let domain: [u8; 4] = [deposit_input[40], deposit_input[41], deposit_input[42], deposit_input[43]];
+        assert(domain == DOMAIN);
+
+        // Ensure the local token contract address is not the zero address.
+        let local_token_contract_address: [u8; 32] = [0u8; 32];
+        for i in 0u8..32u8{
+            local_token_contract_address[i] = deposit_input[108u8 + i];
+        }
+        assert (local_token_contract_address != [0u8; 32]);
+
+        // Ensure the local recipient address is not the zero address.
+        let local_recipient_address: [u8; 32] = [0u8; 32];
+        for i in 0u8..32u8{
+            local_recipient_address[i] = deposit_input[76u8 + i];
+        }
+        assert (local_recipient_address != [0u8; 32]);
+        // Convert the local recipient address bytes to an Aleo address type.
+        let recipient_address: address = convert_bytes_to_address(local_recipient_address);
+
+        // Extract the nonce from the deposit input bytes.
+        let nonce: [u8; 32] = [0u8; 32];
+        for i in 0u8..32u8{
+            nonce[i] = deposit_input[204u8 + i];
+        }
+       
+        // Hash the deposit input to compare against the provided digest.
+        let deposit_hash_bits = Keccak256::hash_to_bits_raw(deposit_input);
+        let deposit_hash = Deserialize::from_bits_raw::[[u8; 32]](deposit_hash_bits);
+        assert(deposit_hash == digest);
+
+        // Ensure that if the recipient address is the wrapper program for private mint,
+        // then the hookData field cannot be zero.
+        let hookData: [u8; 32] = [0u8; 32];
+        for i in 0u8..32u8{
+            hookData[i] = deposit_input[240u8 + i];
+        }
+        if (recipient_address == PRIVATE_MINT_WRAPPER_ADDRESS) {
+            assert(hookData != [0u8; 32]);
+        }
+
+        return (amount, recipient_address, deposit_hash, nonce, local_token_contract_address);
+    }
+
     // This function will no longer be used, so we force a failure with a false assertion.
     async transition burn(public amount: u128, public native_domain: u32, public native_recipient: [u8; 32]) -> Future {
         // This assert will always fail.
@@ -241,6 +344,13 @@ program stablecoin_bridge.aleo {
         assert_eq(self.caller, USDCX_MANAGER_KEY);
         return async {
             circle_attester.set(true, new_attester);
+        };
+    }
+
+    async transition set_attester(local_token_address: [u8; 32], attester_public_key: [u8; 20]) -> Future {
+        assert_eq(self.caller, USDCX_MANAGER_KEY);
+        return async {
+            attesters.set(local_token_address, attester_public_key);
         };
     }
 
