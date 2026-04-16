@@ -1,5 +1,6 @@
-import freezelist_program.aleo;
+import merkle_tree.aleo;
 import multisig_core.aleo;
+import freezelist_program.aleo;
 import stablecoin_program.aleo;
 
 // The USDCx bridge program.
@@ -10,7 +11,7 @@ program stablecoin_bridge.aleo {
         if self.edition > 0u16 {
             let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo/WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -45,14 +46,18 @@ program stablecoin_bridge.aleo {
     }
 
     mapping circle_attester: bool => [u8; 20];
+    mapping circle_attesters: [u8; 32] => [u8; 20]; // Mapping of localToken address to corresponding public attester key.
+    mapping maximum_burn_amount: bool => u128;
     mapping minimum_burn_amount: bool => u128;
     mapping nullifier: [u8; 32] => bool;
     mapping paused: bool => bool;
-    mapping circle_attesters: [u8; 32] => [u8; 20]; // Mapping of localToken address to corresponding public attester key.
 
     // This method extracts the recipient address, amount, and nonce field from the payload and verifies the ECDSA signature.
     // A freeze list check is also performed before minting private tokens to the recipient address.
-    async transition mint_private(deposit_input: [u8; 240], sig: [u8; 65], digest: [u8; 32], receiver_merkle_proofs: [MerkleProof; 2]) -> (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) {
+    async transition mint_private(deposit_input: [u8; 240], sig: [u8; 65], digest: [u8; 32], receiver_merkle_proofs: [stablecoin_program.aleo/MerkleProof; 2]) -> (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) {
+        // This method will be deprecated.
+        assert_eq(true, false);
+        
         // Check the invariant conditions before proceeding with the mint.
         let (amount, recipient_address, deposit_hash, nonce) = check_mint_invariants(deposit_input, digest);
 
@@ -102,6 +107,9 @@ program stablecoin_bridge.aleo {
     // This method extracts the recipient address, amount, and nonce field from the payload and verifies the ECDSA signature.
     // A public freeze list check is also performed before minting public tokens to the recipient address.
     async transition mint_public(deposit_input: [u8; 240], sig: [u8; 65], digest: [u8; 32]) -> (Future) {
+        // This method will be depracated in favor of mint_public_v2.
+        assert_eq(true, false);
+
         // Check the invariant conditions before proceeding with the mint.
         let (amount, recipient_address, deposit_hash, nonce) = check_mint_invariants(deposit_input, digest);
 
@@ -324,7 +332,37 @@ program stablecoin_bridge.aleo {
 
             // Check that the amount is above the minimum burn amount.
             let burn_threshold: u128 = minimum_burn_amount.get_or_use(true, MINIMUM_BURN_AMOUNT);
-             assert(amount >= burn_threshold);
+            assert(amount >= burn_threshold);
+
+            // Check that the amount is below the maximum burn amount.
+            let max_burn_amount: u128 = maximum_burn_amount.get_or_use(true, MAXIMUM_BURN_AMOUNT);
+            assert(amount <= max_burn_amount);
+
+            // Check that the address is not on the freeze list.
+            let is_sender_frozen: bool = freezelist_program.aleo/freeze_list.get_or_use(sender, false);
+            assert_eq(is_sender_frozen, false);
+            burn_future.await();
+        };
+    }
+
+    // Burn transactions will be fully public.  The native domain and native recipient fields are required for Circle compliance.
+    async transition burn_public_as_signer(public amount: u128, public native_domain: u32, public native_recipient: [u8; 32]) -> Future {
+        let sender = self.signer;
+        // This will make an external call to the burn_public transition in the bridged_usdc.aleo program.
+        // Only the bridge program will be able to call this method on the bridged_usdc.aleo program.
+        let burn_future: Future = stablecoin_program.aleo/burn_public(sender, amount);
+        return async {
+            // Check that the USDCX_PAUSE_KEY has not paused the bridge.
+            let is_paused: bool = paused.get_or_use(true, false);
+            assert_eq(is_paused, false);
+
+            // Check that the amount is above the minimum burn amount.
+            let burn_threshold: u128 = minimum_burn_amount.get_or_use(true, MINIMUM_BURN_AMOUNT);
+            assert(amount >= burn_threshold);
+
+            // Check that the amount is below the maximum burn amount.
+            let max_burn_amount: u128 = maximum_burn_amount.get_or_use(true, MAXIMUM_BURN_AMOUNT);
+            assert(amount <= max_burn_amount);
 
             // Check that the address is not on the freeze list.
             let is_sender_frozen: bool = freezelist_program.aleo/freeze_list.get_or_use(sender, false);
@@ -347,10 +385,10 @@ program stablecoin_bridge.aleo {
         };
     }
 
-    async transition set_attester(local_token_address: [u8; 32], attester_public_key: [u8; 20]) -> Future {
+    async transition set_attesters(local_token_address: [u8; 32], attester_public_key: [u8; 20]) -> Future {
         assert_eq(self.caller, USDCX_MANAGER_KEY);
         return async {
-            attesters.set(local_token_address, attester_public_key);
+            circle_attesters.set(local_token_address, attester_public_key);
         };
     }
 
@@ -405,7 +443,7 @@ program stablecoin_bridge.aleo {
     // Iteratively hashes the sibling path based on the leaf index to reconstruct the root.
     // Stops when a zero field is encountered in the siblings array, indicating the end of the valid path.
     // Returns the calculated root and the actual depth reached.
-    inline calculate_root_depth_siblings(merkle_proof: MerkleProof) -> (public field, public u32) {
+    inline calculate_root_depth_siblings(merkle_proof: stablecoin_program.aleo/MerkleProof) -> (public field, public u32) {
         let root: field = calculate_hash_for_leaves(merkle_proof.siblings[0u8], merkle_proof.siblings[1u8],  merkle_proof.leaf_index % 2u32);
         for i: u32 in 2u32..MAX_TREE_DEPTH + 1u32 {
             if (merkle_proof.siblings[i] == 0field) {
@@ -420,7 +458,7 @@ program stablecoin_bridge.aleo {
     // Accepts two Merkle proofs representing the neighboring leaves around the missing address.
     // Returns the common Merkle root if the address is proven to be outside the tree.
     // If the tree is not sorted correctly, this function may return incorrect results.
-    inline verify_non_inclusion_private(addr: address, merkle_proofs: [MerkleProof;2]) -> field {
+    inline verify_non_inclusion_private(addr: address, merkle_proofs: [stablecoin_program.aleo/MerkleProof;2]) -> field {
         let (root1, depth1): (field, u32)= calculate_root_depth_siblings(merkle_proofs[0u32]);
         let (root2, depth2): (field, u32) = calculate_root_depth_siblings(merkle_proofs[1u32]);
 
