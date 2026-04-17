@@ -3,24 +3,30 @@
   "version": "0.1.0",
   "description": "",
   "license": "GPL",
-  "leo": "3.4.0",
+  "leo": "4.0.1",
   "dependencies": [
     {
-      "name": "stablecoin_program.aleo",
+      "name": "merkle_tree.aleo",
       "location": "local",
-      "path": "../stablecoin_program",
-      "edition": null
-    },
-    {
-      "name": "freezelist_program.aleo",
-      "location": "local",
-      "path": "../freezelist_program",
+      "path": "./imports/merkle_tree.aleo",
       "edition": null
     },
     {
       "name": "multisig_core.aleo",
       "location": "local",
-      "path": "../multisig_core",
+      "path": "./imports/multisig_core.aleo",
+      "edition": null
+    },
+    {
+      "name": "freezelist_program.aleo",
+      "location": "local",
+      "path": "./imports/freezelist_program.aleo",
+      "edition": null
+    },
+    {
+      "name": "stablecoin_program.aleo",
+      "location": "local",
+      "path": "./imports/stablecoin_program.aleo",
       "edition": null
     }
   ],
