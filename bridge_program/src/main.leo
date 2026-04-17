@@ -11,7 +11,7 @@ program stablecoin_bridge.aleo {
         if self.edition > 0u16 {
             let signing_op_id = BHP256::hash_to_field(ChecksumEdition { checksum: self.checksum, edition: self.edition });
 
-            let wallet_signing_op_id_hash = BHP256::hash_to_field(multisig_core.aleo/WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
+            let wallet_signing_op_id_hash = BHP256::hash_to_field(WalletSigningOpId { wallet_id: self.address, signing_op_id: signing_op_id });
             let signing_complete = multisig_core.aleo/completed_signing_ops.contains(wallet_signing_op_id_hash);
             assert(signing_complete);
         }
@@ -289,8 +289,8 @@ program stablecoin_bridge.aleo {
         // Ensure that if the recipient address is the wrapper program for private mint,
         // then the hookData field cannot be zero.
         let hookData: [u8; 32] = [0u8; 32];
-        for i in 0u8..32u8{
-            hookData[i] = deposit_input[240u8 + i];
+        for i in 0u32..32u32{
+            hookData[i] = deposit_input[240u32 + i];
         }
         if (recipient_address == PRIVATE_MINT_WRAPPER_ADDRESS) {
             assert(hookData != [0u8; 32]);
