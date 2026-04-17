@@ -932,6 +932,16 @@ finalize set_minimum_burn_amount:
     input r0 as u128.public;
     set r0 into minimum_burn_amount[true];
 
+function set_maximum_burn_amount:
+    input r0 as u128.private;
+    assert.eq self.caller aleo13zt4uq0u09sffnf4ctgu47k5n30txjx2w9cwcqgneapjeqsywsqqu6hspt;
+    async set_maximum_burn_amount r0 into r1;
+    output r1 as stablecoin_bridge.aleo/set_maximum_burn_amount.future;
+
+finalize set_maximum_burn_amount:
+    input r0 as u128.public;
+    set r0 into maximum_burn_amount[true];
+
 function address_to_bytes_raw:
     input r0 as address.private;
     serialize.bits.raw r0 (address) into r1 ([boolean; 253u32]);

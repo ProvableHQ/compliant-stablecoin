@@ -399,6 +399,13 @@ program stablecoin_bridge.aleo {
         };
     }
 
+    async transition set_maximum_burn_amount(new_maximum: u128) -> Future {
+        assert_eq(self.caller, USDCX_MANAGER_KEY);
+        return async {
+            maximum_burn_amount.set(true, new_maximum);
+        };
+    }
+
     inline convert_bytes_to_u128(amount: [u8; 16]) -> u128 {
         let sum: u128 = 0;
         for i in 0u8..16u8 {
