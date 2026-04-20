@@ -319,6 +319,7 @@ program stablecoin_bridge.aleo {
             hookData[i] = deposit_input[241u32 + i];
         }
         if (recipient_address == PRIVATE_MINT_WRAPPER_ADDRESS) {
+            assert_eq(self.caller, PRIVATE_MINT_WRAPPER_ADDRESS);
             assert(hookData != [0u8; 32]);
         }
 
