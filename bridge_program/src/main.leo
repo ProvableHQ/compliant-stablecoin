@@ -55,7 +55,7 @@ program stablecoin_bridge.aleo {
     // This method extracts the recipient address, amount, and nonce field from the payload and verifies the ECDSA signature.
     // A freeze list check is also performed before minting private tokens to the recipient address.
     async transition mint_private(deposit_input: [u8; 240], sig: [u8; 65], digest: [u8; 32], receiver_merkle_proofs: [stablecoin_program.aleo/MerkleProof; 2]) -> (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) {
-        // This method will be deprecated.
+        // This method is deprecated in favor of mint_private_v2.
         assert_eq(true, false);
         
         // Check the invariant conditions before proceeding with the mint.
@@ -129,7 +129,7 @@ program stablecoin_bridge.aleo {
     // This method extracts the recipient address, amount, and nonce field from the payload and verifies the ECDSA signature.
     // A public freeze list check is also performed before minting public tokens to the recipient address.
     async transition mint_public(deposit_input: [u8; 240], sig: [u8; 65], digest: [u8; 32]) -> (Future) {
-        // This method will be depracated in favor of mint_public_v2.
+        // This method is  deprecated in favor of mint_public_v2.
         assert_eq(true, false);
 
         // Check the invariant conditions before proceeding with the mint.
@@ -269,7 +269,7 @@ program stablecoin_bridge.aleo {
         let magic_value: [u8; 4] = [deposit_input[0], deposit_input[1], deposit_input[2], deposit_input[3]];
         assert(magic_value == MAGIC_VALUE);
 
-        // // Ensure the deposit input is of the supported version.
+        // Ensure the deposit input is of the supported version.
         let version: [u8; 4] = [deposit_input[4], deposit_input[5], deposit_input[6], deposit_input[7]];
         assert(version == SUPPORTED_VERSION);
 
@@ -311,6 +311,12 @@ program stablecoin_bridge.aleo {
         let deposit_hash_bits = Keccak256::hash_to_bits_raw(deposit_input);
         let deposit_hash = Deserialize::from_bits_raw::[[u8; 32]](deposit_hash_bits);
         assert(deposit_hash == digest);
+
+        // Ensure that the hookDataLen field is equal to 65.
+        assert_eq(deposit_input[236], 0u8);
+        assert_eq(deposit_input[237], 0u8);
+        assert_eq(deposit_input[238], 0u8);
+        assert_eq(deposit_input[239], 65u8);
 
         // Ensure that if the recipient address is the wrapper program for private mint,
         // then the hookData field cannot be zero.
