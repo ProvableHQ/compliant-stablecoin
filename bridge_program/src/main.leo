@@ -73,6 +73,28 @@ program stablecoin_bridge.aleo {
         return (compliance_record, usdc_record, verify_future);
     }
 
+    // This method extracts the recipient address, amount, and nonce field from the payload and verifies the ECDSA signature.
+    // A freeze list check is also performed before minting private tokens to the recipient address.
+    async transition mint_private_v2(deposit_input: [u8; 305], sig: [u8; 65], digest: [u8; 32], receiver_merkle_proofs: [stablecoin_program.aleo/MerkleProof; 2]) -> (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) {        
+        // Check the invariant conditions before proceeding with the mint.
+        let (amount, recipient_address, deposit_hash, nonce, local_token) = check_mint_invariants_v2(deposit_input, digest);
+
+        // Ensure that the flag byte is set to 1u8 for mint private.
+        let flag_byte: u8 = deposit_input[240];
+        assert_eq(flag_byte, 1u8);
+
+        // Verify that the recipient is not frozen in the Circle freeze list.
+        let root: field = verify_non_inclusion_private(recipient_address, receiver_merkle_proofs);
+
+        // Call the mint private function from the Bridged USDC program.
+        let (compliance_record, usdc_record, token_future): (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) = stablecoin_program.aleo/mint_private(recipient_address, amount);
+        
+        // Perform the signature verification, freeze list check, and nullifier check.
+        let verify_future: Future = finalize_verify_ecdsa_private(sig, deposit_hash, nonce, root, token_future);
+
+        return (compliance_record, usdc_record, verify_future);
+    }
+
     // This function performs the signature verification, freeze list check, and nullifier check.
     async function finalize_verify_ecdsa_private(sig: [u8; 65], deposit_hash: [u8; 32], nonce: [u8; 32], root: field, token_future: Future) {
         // Check that the Admin has not paused the bridge.
@@ -124,9 +146,13 @@ program stablecoin_bridge.aleo {
 
     // This method extracts the recipient address, amount, and nonce field from the payload and verifies the ECDSA signature.
     // A public freeze list check is also performed before minting public tokens to the recipient address.
-    async transition mint_public_v2(deposit_input: [u8; 272], sig: [u8; 65], digest: [u8; 32]) -> (Future) {
+    async transition mint_public_v2(deposit_input: [u8; 305], sig: [u8; 65], digest: [u8; 32]) -> (Future) {
         // Check the invariant conditions before proceeding with the mint.
         let (amount, recipient_address, deposit_hash, nonce, local_token) = check_mint_invariants_v2(deposit_input, digest);
+
+        // Check that the flag byte is set to 0u8 for mint public.
+        let flag_byte: u8 = deposit_input[240];
+        assert_eq(flag_byte, 0u8);
 
         // Call the mint public function from the Bridged USDC program.
         let mint_public_future: Future = stablecoin_program.aleo/mint_public(recipient_address, amount);
@@ -237,7 +263,7 @@ program stablecoin_bridge.aleo {
     }
 
     // Check the invariant conditions before allowing either a mint private or mint public transaction.
-    inline check_mint_invariants_v2(deposit_input: [u8; 272], digest: [u8; 32]) -> (u128, address, [u8;32], [u8; 32], [u8; 32]) {
+    inline check_mint_invariants_v2(deposit_input: [u8; 305], digest: [u8; 32]) -> (u128, address, [u8;32], [u8; 32], [u8; 32]) {
         // Additional invariant checks can be added here if needed in the future.
         // Ensure the deposit input starts with the expected magic value.
         let magic_value: [u8; 4] = [deposit_input[0], deposit_input[1], deposit_input[2], deposit_input[3]];
@@ -290,7 +316,7 @@ program stablecoin_bridge.aleo {
         // then the hookData field cannot be zero.
         let hookData: [u8; 32] = [0u8; 32];
         for i in 0u32..32u32{
-            hookData[i] = deposit_input[240u32 + i];
+            hookData[i] = deposit_input[241u32 + i];
         }
         if (recipient_address == PRIVATE_MINT_WRAPPER_ADDRESS) {
             assert(hookData != [0u8; 32]);
