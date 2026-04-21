@@ -87,12 +87,37 @@ program stablecoin_bridge.aleo {
         let root: field = verify_non_inclusion_private(recipient_address, receiver_merkle_proofs);
 
         // Call the mint private function from the Bridged USDC program.
-        let (compliance_record, usdc_record, token_future): (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) = stablecoin_program.aleo/mint_private(recipient_address, amount);
-        
-        // Perform the signature verification, freeze list check, and nullifier check.
-        let verify_future: Future = finalize_verify_ecdsa_private(sig, deposit_hash, nonce, root, token_future);
+        let (compliance_record, usdcx_record, token_future): (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) = stablecoin_program.aleo/mint_private(recipient_address, amount);
 
-        return (compliance_record, usdc_record, verify_future);
+        return (compliance_record, usdcx_record, async {
+            // Check that the Admin has not paused the bridge.
+            let is_paused: bool = paused.get_or_use(true, false);
+            assert_eq(is_paused, false);
+
+            // Check that the Merkle root is valid.
+            let current_root: field = freezelist_program.aleo/freeze_list_root.get(CURRENT_FREEZE_LIST_ROOT_INDEX);
+            let window: u32 = freezelist_program.aleo/block_height_window.get(BLOCK_HEIGHT_WINDOW_INDEX);
+
+            if (current_root != root) {
+                let previous_root: field = freezelist_program.aleo/freeze_list_root.get(PREVIOUS_FREEZE_LIST_ROOT_INDEX);
+                assert_eq(root, previous_root);
+                let updated_height: u32 = freezelist_program.aleo/root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
+                assert(updated_height + window > block.height);
+            }
+            
+            // Fetch the correct attester key based on the local token address in the deposit input.
+            let circle_attester_key: [u8; 20] = circle_attesters.get(local_token);
+
+            // Verify the ECDSA signature using the provided message and public key.
+            let is_valid: bool = ECDSA::verify_digest_eth(sig, circle_attester_key, deposit_hash);
+            assert(is_valid);
+
+            // Verify that the nullifier has not been used.
+            let contains_bool: bool = nullifier.contains(nonce);
+            assert(contains_bool == false);
+            nullifier.set(nonce, true);
+            token_future.await();
+        });
     }
 
     // This function performs the signature verification, freeze list check, and nullifier check.
