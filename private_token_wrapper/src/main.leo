@@ -31,7 +31,7 @@ program private_token_wrapper.aleo {
         edition: u16,
     }
 
-    fn mint_private_wrapper(public payload: [u8; 305], public sig: [u8; 65], public hash: [u8; 32], secret: scalar, recipient: address) -> (stablecoin_program.aleo::Token, Final) {
+    fn mint_private_wrapper(payload: [u8; 305], sig: [u8; 65], hash: [u8; 32], secret: scalar, recipient: address) -> (stablecoin_program.aleo::Token, Final) {
         // Extract the hookData from the deposit payload.
         let hook_data: [u8; 32] = [0u8; 32];
         for i in 0u32..32u32 {
