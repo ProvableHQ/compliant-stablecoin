@@ -146,7 +146,7 @@ program stablecoin_bridge.aleo {
 
     // This method extracts the recipient address, amount, and nonce field from the payload and verifies the ECDSA signature.
     // A public freeze list check is also performed before minting public tokens to the recipient address.
-    async transition mint_public_v2(deposit_input: [u8; 305], sig: [u8; 65], digest: [u8; 32]) -> (Future) {
+    async transition mint_public_v2(deposit_input: [u8; 305], sig: [u8; 65], digest: [u8; 32]) -> (address, u128, Future) {
         // Check the invariant conditions before proceeding with the mint.
         let (amount, recipient_address, deposit_hash, nonce, local_token) = check_mint_invariants_v2(deposit_input, digest);
 
@@ -158,7 +158,7 @@ program stablecoin_bridge.aleo {
         let mint_public_future: Future = stablecoin_program.aleo/mint_public(recipient_address, amount);
         
         // Perform the signature verification, freeze list check, and nullifier check.
-        return async {
+        return (recipient_address, amount, async {
             // Check that the Admin has not paused the bridge.
             let is_paused: bool = paused.get_or_use(true, false);
             assert_eq(is_paused, false);
@@ -181,7 +181,7 @@ program stablecoin_bridge.aleo {
 
             // Await the mint public future to complete the minting process.
             mint_public_future.await();
-        };
+        });
     }
 
     async function finalize_verify_ecdsa_public(sig: [u8; 65], deposit_hash: [u8; 32], nonce: [u8; 32], recipient_address: address, mint_public_future: Future) {
