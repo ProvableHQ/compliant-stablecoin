@@ -19,7 +19,7 @@ program stablecoin_bridge.aleo {
 
     const USDCX_PAUSE_KEY: address = aleo16s9af9darj0j5k7fpaxjq0u9fepd6sc4svrkr9vs4d3wlmp5lqyq4h3fpl;
     const USDCX_MANAGER_KEY: address = aleo13zt4uq0u09sffnf4ctgu47k5n30txjx2w9cwcqgneapjeqsywsqqu6hspt;
-    const PRIVATE_MINT_WRAPPER_ADDRESS: address = usdcx_private_mint.aleo;
+    const PRIVATE_MINT_WRAPPER_ADDRESS: address = private_token_wrapper.aleo;
     const ETH_PUBLIC_KEY: [u8; 20] = [252, 83, 188, 10, 12, 182, 237, 57, 194, 0, 45, 226, 77, 10, 169, 81, 124, 122, 66, 198]; // 0xfc53bc0a0cb6ed39c2002de24d0aa9517c7a42c6
     const ARC_PUBLIC_KEY: [u8; 20] = [152, 17, 74, 154, 55, 157, 106, 190, 118, 131, 221, 148, 116, 192, 136, 32, 81, 93, 17, 186]; // 0x98114a9a379d6abe7683dd94874c08820515d11ba
     const MAGIC_VALUE: [u8; 4] = [90, 46, 10, 205]; // 0x5a2e0acd 
