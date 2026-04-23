@@ -58,7 +58,7 @@ program stablecoin_bridge.aleo {
     // A freeze list check is also performed before minting private tokens to the recipient address.
     async transition mint_private(deposit_input: [u8; 240], sig: [u8; 65], digest: [u8; 32], receiver_merkle_proofs: [stablecoin_program.aleo/MerkleProof; 2]) -> (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) {
         // This method is deprecated in favor of mint_private_v2.
-        assert_eq(true, false);
+        assert_neq(self.caller, self.caller);
         
         // Check the invariant conditions before proceeding with the mint.
         let (amount, recipient_address, deposit_hash, nonce) = check_mint_invariants(deposit_input, digest);
@@ -157,7 +157,7 @@ program stablecoin_bridge.aleo {
     // A public freeze list check is also performed before minting public tokens to the recipient address.
     async transition mint_public(deposit_input: [u8; 240], sig: [u8; 65], digest: [u8; 32]) -> (Future) {
         // This method is  deprecated in favor of mint_public_v2.
-        assert_eq(true, false);
+        assert_neq(self.caller, self.caller);
 
         // Check the invariant conditions before proceeding with the mint.
         let (amount, recipient_address, deposit_hash, nonce) = check_mint_invariants(deposit_input, digest);
