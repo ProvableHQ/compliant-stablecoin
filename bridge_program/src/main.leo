@@ -302,6 +302,12 @@ program stablecoin_bridge.aleo {
 
         // Extract the amount from the deposit input bytes.
         let amount_bytes: [u8; 16] = [0u8; 16];
+        
+        // Check that the first 16 bytes are zero.
+        for i in 0u8..16u8{
+            assert_eq(deposit_input[8u8 + i], 0u8);
+        }
+        
         for i in 0u8..16u8{
             amount_bytes[i] = deposit_input[24u8 + i];
         }
