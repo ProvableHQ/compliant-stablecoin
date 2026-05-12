@@ -470,6 +470,8 @@ program stablecoin_bridge.aleo {
     async transition set_maximum_burn_amount(new_maximum: u128) -> Future {
         assert_eq(self.caller, USDCX_MANAGER_KEY);
         return async {
+            let burn_minimum: u128 = minimum_burn_amount.get_or_use(true, MINIMUM_BURN_AMOUNT);
+            assert(new_maximum > burn_minimum);
             maximum_burn_amount.set(true, new_maximum);
         };
     }
