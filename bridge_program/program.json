@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "",
   "license": "GPL",
-  "leo": "3.4.0",
+  "leo": "4.2.0",
   "dependencies": [
     {
       "name": "stablecoin_program.aleo",
@@ -21,6 +21,12 @@
       "name": "multisig_core.aleo",
       "location": "local",
       "path": "../multisig_core",
+      "edition": null
+    },
+    {
+      "name": "merkle_tree.aleo",
+      "location": "local",
+      "path": "../merkle_tree",
       "edition": null
     }
   ],
