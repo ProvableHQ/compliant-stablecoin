@@ -19,7 +19,7 @@ program stablecoin_bridge.aleo {
     const USDCX_PAUSE_KEY: address = aleo16s9af9darj0j5k7fpaxjq0u9fepd6sc4svrkr9vs4d3wlmp5lqyq4h3fpl;
     const USDCX_MANAGER_KEY: address = aleo13zt4uq0u09sffnf4ctgu47k5n30txjx2w9cwcqgneapjeqsywsqqu6hspt;
     const ETH_PUBLIC_KEY: [u8; 20] = [252, 83, 188, 10, 12, 182, 237, 57, 194, 0, 45, 226, 77, 10, 169, 81, 124, 122, 66, 198]; // 0xfc53bc0a0cb6ed39c2002de24d0aa9517c7a42c6
-    const MAGIC_VALUE: [u8; 4] = [90, 46, 10, 205]; // 0x5a2e0acd 
+    const MAGIC_VALUE: [u8; 4] = [90, 46, 10, 205]; // 0x5a2e0acd
     const SUPPORTED_VERSION: [u8; 4] = [0, 0, 0, 1];
     const DOMAIN: [u8; 4] = [0, 0, 39, 18]; // 10002
     const MINIMUM_BURN_AMOUNT: u128 = 5000000u128;
@@ -57,7 +57,7 @@ program stablecoin_bridge.aleo {
 
         // Call the mint private function from the Bridged USDC program.
         let (compliance_record, usdc_record, token_future): (stablecoin_program.aleo/ComplianceRecord, stablecoin_program.aleo/Token, Future) = stablecoin_program.aleo/mint_private(recipient_address, amount);
-        
+
         // Perform the signature verification, freeze list check, and nullifier check.
         let verify_future: Future = finalize_verify_ecdsa_private(sig, deposit_hash, nonce, root, token_future);
 
@@ -80,10 +80,10 @@ program stablecoin_bridge.aleo {
             let updated_height: u32 = freezelist_program.aleo/root_updated_height.get(ROOT_UPDATED_HEIGHT_INDEX);
             assert(updated_height + window > block.height);
         }
-        
+
         // Check that the Circle attester is set.  If not, use the default ETH public key.
         let circle_attester_key: [u8; 20] = circle_attester.get_or_use(true, ETH_PUBLIC_KEY);
-        
+
         // Verify the ECDSA signature using the provided message and public key.
         let is_valid: bool = ECDSA::verify_digest_eth(sig, circle_attester_key, deposit_hash);
         assert(is_valid);
@@ -103,7 +103,7 @@ program stablecoin_bridge.aleo {
 
         // Call the mint public function from the Bridged USDC program.
         let mint_public_future: Future = stablecoin_program.aleo/mint_public(recipient_address, amount);
-        
+
         // Perform the signature verification, freeze list check, and nullifier check.
         let verify_future: Future = finalize_verify_ecdsa_public(sig, deposit_hash, nonce, recipient_address, mint_public_future);
 
@@ -118,10 +118,10 @@ program stablecoin_bridge.aleo {
         // Check that the recipient is not frozen in the Circle freeze list.
         let is_recipient_frozen: bool = freezelist_program.aleo/freeze_list.get_or_use(recipient_address, false);
         assert_eq(is_recipient_frozen, false);
-        
+
         // Check that the Circle attester is set.  If not, use the default ETH public key.
         let circle_attester_key: [u8; 20] = circle_attester.get_or_use(true, ETH_PUBLIC_KEY);
-        
+
         // Verify the ECDSA signature using the provided message and public key.
         let is_valid: bool = ECDSA::verify_digest_eth(sig, circle_attester_key, deposit_hash);
         assert(is_valid);
@@ -179,7 +179,7 @@ program stablecoin_bridge.aleo {
         for i in 0u8..32u8{
             nonce[i] = deposit_input[204u8 + i];
         }
-       
+
         // Hash the deposit input to compare against the provided digest.
         let deposit_hash_bits = Keccak256::hash_to_bits_raw(deposit_input);
         let deposit_hash = Deserialize::from_bits_raw::[[u8; 32]](deposit_hash_bits);
@@ -265,6 +265,7 @@ program stablecoin_bridge.aleo {
         for i in 0u8..253u8 {
             sliced_bits[i] = address_bits[i];
         }
+        assert_eq(address_bytes[31] & 0xE0, 0u8);
         let recipient_address: address = Deserialize::from_bits_raw::[address](sliced_bits);
         return recipient_address;
     }
@@ -318,7 +319,7 @@ program stablecoin_bridge.aleo {
         assert_eq(root1, root2);
         // Ensure the depth of the merkle proofs is the same
         assert_eq(depth1, depth2);
-        
+
         let addr_field: field = addr as field;
         if (merkle_proofs[0u32].leaf_index == merkle_proofs[1u32].leaf_index) {
             // Ensure that if the address is the most left leaf, it is less than the first sibling.
@@ -341,7 +342,7 @@ program stablecoin_bridge.aleo {
             // Ensure the leaves are adjacent.
             assert_eq(merkle_proofs[0u32].leaf_index + 1u32, merkle_proofs[1u32].leaf_index);
         }
-        
+
         return root1;
     }
 }
